@@ -2,7 +2,8 @@
 
 export const screenConfig = {
     width: 1280,
-    height: 720
+    height: 720,
+    tileSize: 32
 };
 
 export const componentTypes = {
@@ -25,14 +26,27 @@ export const assetConfig = {
         key: 'ground',
         url: 'assets/pixel_adventure/Background/Brown.png',
         width: 1280,
-        height: 32
+        height: screenConfig.tileSize
+    },
+    goodJob: {
+        key: 'goodjob',
+        url: 'assets/goodjob_sprite.png',
+        frameWidth: 559,
+        frameHeight: 299,
+        frameCount: 151
+    },
+    wall: {
+        key: 'wall',
+        url: 'assets/wall_tile.png',
+        width: screenConfig.tileSize,
+        height: screenConfig.tileSize
     }
 };
 
 export const componentConfig = {
     [componentTypes.CHARACTER]: {
         key: 'character',
-        frameWidth: 32,
+        frameWidth: 32, // TODO: does the character need to be screenConfig.tileSize x screenConfig.tileSize?
         frameHeight: 32,
         type: 'multisprite',
         actions: {
@@ -44,8 +58,8 @@ export const componentConfig = {
     },
     [componentTypes.LETTER]: {
         key: 'letter',
-        width: 32,
-        height: 32,
+        width: screenConfig.tileSize,
+        height: screenConfig.tileSize,
         color: 0x00FFFF
     },
     [componentTypes.PLATFORM]: {
@@ -54,13 +68,19 @@ export const componentConfig = {
                 key: 'ground',
                 url: 'assets/pixel_adventure/Background/Brown.png',
                 width: 1280,
-                height: 32
+                height: screenConfig.tileSize
             },
             floating: {
                 key: 'floating_platform',
                 url: 'assets/pixel_adventure/Background/Gray.png',
-                width: 200,
-                height: 20
+                width: screenConfig.tileSize,
+                height: screenConfig.tileSize
+            },
+            wall: {
+                key: 'wall',
+                url: 'assets/wall_tile.png',
+                width: screenConfig.tileSize,
+                height: screenConfig.tileSize
             }
         }
     },
@@ -75,8 +95,8 @@ export const componentConfig = {
     },
     [componentTypes.NUMBER]: {
         key: 'number',
-        width: 32,
-        height: 32,
+        width: screenConfig.tileSize,
+        height: screenConfig.tileSize,
         color: 0xFFA500
     },
     [componentTypes.ITEM]: {
@@ -86,32 +106,32 @@ export const componentConfig = {
                 url: 'assets/pixel_adventure/Items/Fruits/Apple.png', 
                 scale: 1,
                 frames: 17,
-                frameWidth: 32,
-                frameHeight: 32
+                frameWidth: screenConfig.tileSize, // TODO: does the item need to be screenConfig.tileSize x screenConfig.tileSize? Likely easiest if it is.
+                frameHeight: screenConfig.tileSize // TODO: does the item need to be screenConfig.tileSize x screenConfig.tileSize? Likely easiest if it is.
             },
             banana: { 
                 key: 'banana', 
                 url: 'assets/pixel_adventure/Items/Fruits/Bananas.png', 
                 scale: 1,
                 frames: 17,
-                frameWidth: 32,
-                frameHeight: 32
+                frameWidth: screenConfig.tileSize, 
+                frameHeight: screenConfig.tileSize
             },
             orange: { 
                 key: 'orange', 
                 url: 'assets/pixel_adventure/Items/Fruits/Orange.png', 
                 scale: 1,
                 frames: 17,
-                frameWidth: 32,
-                frameHeight: 32
+                frameWidth: screenConfig.tileSize,
+                frameHeight: screenConfig.tileSize
             },
             cherry: {
                 key: 'cherry',
                 url: 'assets/pixel_adventure/Items/Fruits/Cherries.png',
                 scale: 1,
                 frames: 17,
-                frameWidth: 32,
-                frameHeight: 32
+                frameWidth: screenConfig.tileSize,
+                frameHeight: screenConfig.tileSize
             },
             gem: {
                 key: 'gem',
@@ -123,43 +143,78 @@ export const componentConfig = {
 };
 
 export const levelConfig = {
-    width: screenConfig.width * 3,
     height: screenConfig.height * 2,
+    segments: [
+        {
+            width: screenConfig.width * 1,
+            components: [
+                {
+                    type: componentTypes.CHARACTER,
+                    x: 100,
+                    y: screenConfig.height * 2 - 150
+                },
+                { type: componentTypes.LETTER, count: 50 },
+                { type: componentTypes.PLATFORM, subtype: 'ground' },
+                { type: componentTypes.PLATFORM, subtype: 'floating' },
+                { type: componentTypes.GOAL },
+            ],
+            goals: ['letter'],
+            difficulty: 1,
+            goalsToComplete: 1  // Add this line
+        },
+        {
+            width: screenConfig.width * 1,
+            components: [
+                { type: componentTypes.PLATFORM, subtype: 'ground' },
+                { type: componentTypes.PLATFORM, subtype: 'floating' },
+                { type: componentTypes.GOAL },
+                { type: componentTypes.NUMBER, count: 100 },
+            ],
+            goals: ['number', 'addition', 'subtraction'],
+            difficulty: 3,
+            goalsToComplete: 2
+        },
+        {
+            width: screenConfig.width,
+            components: [
+                { type: componentTypes.PLATFORM, subtype: 'ground' },
+                { type: componentTypes.PLATFORM, subtype: 'floating' },
+                { type: componentTypes.GOAL },
+                { type: componentTypes.ITEM, count: 20 }
+            ],
+            goals: ['numberVisual', 'additionVisual', 'subtractionVisual'],
+            difficulty: 5,
+            goalsToComplete: 3
+        }
+    ],
     platformConfig: {
         minLength: 3,
         maxLength: 9,
-        density: 0.15 // This represents the relative amount of platforms (0.5 means half the current amount)
-    },
-    components: [
-        {
-            type: componentTypes.CHARACTER,
-            x: 100,
-            y: screenConfig.height * 2 - 150
-        },
-        {
-            type: componentTypes.LETTER,
-            count: 100
-        },
-        {
-            type: componentTypes.PLATFORM,
-            subtype: 'ground'
-        },
-        {
-            type: componentTypes.PLATFORM,
-            subtype: 'floating'
-        },
-        {
-            type: componentTypes.GOAL
-        },
-        {
-            type: componentTypes.NUMBER,
-            count: 100
-        },
-        { type: componentTypes.ITEM, count: 100 }
-    ]
+        density: 0.15
+    }
 };
 
 export const abConfig = {
-    numberRange: { min: 1, max: 9 },
-    letterRange: { min: 'A', max: 'Z' }
+    letterDifficulty: {
+        1: 'ABC',
+        2: 'ABCD',
+        3: 'ABCDE',
+        4: 'ABCDEF',
+        5: 'ABCDEFGH',
+        6: 'ABCDEFGHIJ',
+        7: 'ABCDEFGHIJKLM',
+        8: 'ABCDEFGHIJKLMNOP',
+        9: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    },
+    numberDifficulty: {
+        1: { min: 1, max: 3 },
+        2: { min: 1, max: 5 },
+        3: { min: 1, max: 7 },
+        4: { min: 1, max: 9 },
+        5: { min: 1, max: 11 },
+        6: { min: 1, max: 13 },
+        7: { min: 1, max: 15 },
+        8: { min: 1, max: 17 },
+        9: { min: 1, max: 20 }
+    }
 };

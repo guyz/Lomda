@@ -7,10 +7,12 @@ export default class GoalManager {
         this.config = config;
         this.goalTypes = ['letter', 'number', 'numberVisual', 'addition', 'additionVisual', 'subtraction', 'subtractionVisual'];
         this.currentGoal = null;
+        this.currentDifficulty = 1;
     }
 
-    setNewGoal() {
-        const randomType = this.goalTypes[Math.floor(Math.random() * this.goalTypes.length)];
+    setNewGoal(availableGoals, difficulty) {
+        this.currentDifficulty = difficulty;
+        const randomType = availableGoals[Math.floor(Math.random() * availableGoals.length)];
         let value, a, b;
 
         switch (randomType) {
@@ -24,12 +26,12 @@ export default class GoalManager {
             case 'addition':
             case 'additionVisual':
                 a = this.getRandomNumber();
-                b = this.getRandomNumber(1, abConfig.numberRange.max - a);
+                b = this.getRandomNumber(1, this.getMaxNumber() - a);
                 value = `${a}+${b}`;
                 break;
             case 'subtraction':
             case 'subtractionVisual':
-                a = this.getRandomNumber(2, abConfig.numberRange.max);
+                a = this.getRandomNumber(2, this.getMaxNumber());
                 b = this.getRandomNumber(1, a - 1);
                 value = `${a}-${b}`;
                 break;
@@ -39,14 +41,21 @@ export default class GoalManager {
         return this.currentGoal;
     }
 
-    getRandomNumber(min = abConfig.numberRange.min, max = abConfig.numberRange.max) {
+    getRandomNumber(min = this.getMinNumber(), max = this.getMaxNumber()) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
     getRandomLetter() {
-        const min = abConfig.letterRange.min.charCodeAt(0);
-        const max = abConfig.letterRange.max.charCodeAt(0);
-        return String.fromCharCode(this.getRandomNumber(min, max));
+        const letters = abConfig.letterDifficulty[this.currentDifficulty];
+        return letters[Math.floor(Math.random() * letters.length)];
+    }
+
+    getMinNumber() {
+        return abConfig.numberDifficulty[this.currentDifficulty].min;
+    }
+
+    getMaxNumber() {
+        return abConfig.numberDifficulty[this.currentDifficulty].max;
     }
 
     checkGoalAchievement(collectedItem) {

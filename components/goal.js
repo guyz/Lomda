@@ -1,4 +1,6 @@
 // components/goal.js
+import { screenConfig, assetConfig } from '../config.js';
+import ProgressBar from './progressBar.js';
 
 class Goal extends Phaser.GameObjects.Container {
     constructor(scene, config) {
@@ -15,7 +17,14 @@ class Goal extends Phaser.GameObjects.Container {
         this.textContainer = scene.add.container(20, 40);
         this.itemContainer = scene.add.container(20, 100);
 
-        this.add([this.background, this.textContainer, this.itemContainer]);
+        // Create progress bar
+        // Note: these values are hardcoded for now, will make dynamic later. If you try to change the size of the goal graphic, things will break. Maybe best to keep the goal component fixed in size regardless of other configs.
+        const progressBarWidth = this.containerWidth - 40; // 40 is twice the margin
+        const progressBarHeight = 20;
+        this.progressBar = new ProgressBar(scene, 130, 10, progressBarWidth, progressBarHeight);
+        this.positionProgressBar();
+
+        this.add([this.background, this.textContainer, this.itemContainer, this.progressBar]);
 
         scene.add.existing(this);
         this.setScrollFactor(0);
@@ -29,40 +38,47 @@ class Goal extends Phaser.GameObjects.Container {
         this.checkmarkKey = 'checkmark'; // Add this line
         this.requiredItems = 0; // Add this line
         this.collectedItems = 0; // Add this line
+        this.goodJobAnimation = null; // Add this line
+        this.totalGoals = 0; // Add this line
+        this.completedGoals = 0; // Add this line
+    }
+
+    positionProgressBar() {
+        const margin = 20;
+        this.progressBar.x = margin;
+        this.progressBar.y = this.containerHeight - this.progressBar.height - margin;
+        this.progressBar.updateSize(this.containerWidth - 2 * margin, this.progressBar.height);
     }
 
     createBackground() {
-        this.background = this.scene.add.graphics();
-
-        // Shadow
-        this.background.fillStyle(0x000000, 0.3);
-        this.background.fillRoundedRect(5, 5, this.containerWidth, this.containerHeight, this.cornerRadius);
-
-        // Gradient background with rounded corners
-        const gradientSteps = 20;
-        const startColor = Phaser.Display.Color.ValueToColor('#ffa500');
-        const endColor = Phaser.Display.Color.ValueToColor('#ff8c00');
-
-        for (let i = 0; i < gradientSteps; i++) {
-            const t = i / (gradientSteps - 1);
-            const color = Phaser.Display.Color.Interpolate.ColorWithColor(startColor, endColor, gradientSteps, i);
-            this.background.fillStyle(Phaser.Display.Color.GetColor(color.r, color.g, color.b));
-            const y = (i / gradientSteps) * this.containerHeight;
-            const height = (this.containerHeight / gradientSteps) + 1; // Add 1 to avoid tiny gaps
-            this.background.fillRoundedRect(0, y, this.containerWidth, height, this.cornerRadius);
+        if (this.background) {
+            this.background.clear();
+        } else {
+            this.background = this.scene.add.graphics();
         }
+
+        // Solid orange background with rounded corners
+        this.background.fillStyle(0xffa500, 1);  // Orange color
+        this.background.fillRoundedRect(0, 0, this.containerWidth, this.containerHeight, this.cornerRadius);
 
         // Stroke
         this.background.lineStyle(3, 0xffffff, 1);
         this.background.strokeRoundedRect(0, 0, this.containerWidth, this.containerHeight, this.cornerRadius);
 
-        // Highlight for depth effect
-        this.background.lineStyle(2, 0xffffff, 0.5);
-        this.background.beginPath();
-        this.background.arc(this.cornerRadius, this.cornerRadius, this.cornerRadius, Math.PI, 1.5 * Math.PI);
-        this.background.lineTo(this.containerWidth - this.cornerRadius, 0);
-        this.background.arc(this.containerWidth - this.cornerRadius, this.cornerRadius, this.cornerRadius, 1.5 * Math.PI, 2 * Math.PI);
-        this.background.strokePath();
+        // Debug text
+        const debugText = this.scene.add.text(10, 10, 'Debug: Solid Orange Background', { 
+            fontSize: '16px', 
+            fill: '#fff',
+            backgroundColor: '#000'
+        });
+        this.add(debugText);
+
+        console.log('Background created with solid orange color');
+        console.log('Container dimensions:', this.containerWidth, 'x', this.containerHeight);
+        console.log('Background object:', this.background);
+        console.log('Is background visible:', this.background.visible);
+        console.log('Background alpha:', this.background.alpha);
+        console.log('Background position:', this.background.x, this.background.y);
     }
 
     setGoalText(text, goalData) {
@@ -154,15 +170,129 @@ class Goal extends Phaser.GameObjects.Container {
                 this.itemContainer.replace(itemToReplace, checkmark);
             }
         }
-        return this.collectedItems >= this.requiredItems;
+        const isCompleted = this.collectedItems >= this.requiredItems;
+        if (isCompleted) {
+            // If there's an ongoing animation, stop it immediately
+            if (this.currentTimeline) {
+                this.currentTimeline.stop();
+                this.currentTimeline.destroy();
+                this.currentTimeline = null;
+            }
+            if (this.goodJobAnimation && this.goodJobAnimation.destroy) {
+                this.goodJobAnimation.destroy();
+            }
+            this.goodJobAnimation = null;
+            
+            this.playGoodJobAnimation();
+        }
+        return isCompleted;
+    }
+
+    playGoodJobAnimation() {
+        console.log('Displaying good job animation');
+        
+        // If there's an ongoing animation, stop it
+        if (this.goodJobAnimation) {
+            if (this.currentTimeline) {
+                this.currentTimeline.stop();
+                this.currentTimeline.destroy();
+            }
+            this.goodJobAnimation.destroy();
+        }
+
+        this.goodJobAnimation = this.scene.add.sprite(screenConfig.width/2, screenConfig.height/2, assetConfig.goodJob.key);
+
+        this.goodJobAnimation.setOrigin(0.5);
+        this.goodJobAnimation.setDepth(1001);
+        this.goodJobAnimation.setScrollFactor(0);
+
+        // Calculate scale to fit the sprite within 60% of the screen width
+        const scale = (screenConfig.width * 0.6) / assetConfig.goodJob.frameWidth;
+        this.goodJobAnimation.setScale(scale);
+
+        const initialY = this.goodJobAnimation.y;
+
+        console.log('Starting animation sequence');
+        const timeline = this.scene.tweens.createTimeline();
+
+        timeline.add({
+            targets: this.goodJobAnimation,
+            y: initialY - 50,
+            duration: 500,
+            ease: 'Power2',
+            onStart: () => {
+                if (this.goodJobAnimation && this.goodJobAnimation.play) {
+                    this.goodJobAnimation.play('goodjob_anim');
+                }
+            }
+        });
+
+        timeline.add({
+            targets: this.goodJobAnimation,
+            alpha: { from: 1, to: 1 },
+            duration: 3000,
+            ease: 'Linear'
+        });
+
+        timeline.add({
+            targets: this.goodJobAnimation,
+            alpha: 0,
+            y: initialY - 100,
+            duration: 500,
+            ease: 'Power2',
+            onComplete: () => {
+                console.log('Animation sequence completed');
+                if (this.goodJobAnimation && !this.goodJobAnimation.scene) {
+                    console.log('Animation object already destroyed');
+                    return;
+                }
+                if (this.goodJobAnimation && this.goodJobAnimation.destroy) {
+                    this.goodJobAnimation.destroy();
+                }
+                this.goodJobAnimation = null;
+            }
+        });
+
+        timeline.play();
+
+        // Store the timeline for potential early stopping
+        this.currentTimeline = timeline;
     }
 
     adjustBackgroundSize() {
         const textBounds = this.textContainer.getBounds();
         const itemBounds = this.itemContainer.getBounds();
         const width = Math.max(textBounds.width, itemBounds.width) + 60;
-        const height = textBounds.height + itemBounds.height + 100;
-        this.background.setSize(width, height);
+        const height = textBounds.height + itemBounds.height + this.progressBar.height + 140; // Increased height to accommodate progress bar
+        this.containerWidth = width;
+        this.containerHeight = height;
+        this.background.clear();
+        this.background.fillStyle(0xffa500, 1);
+        this.background.fillRoundedRect(0, 0, width, height, this.cornerRadius);
+        this.background.lineStyle(3, 0xffffff, 1);
+        this.background.strokeRoundedRect(0, 0, width, height, this.cornerRadius);
+        this.positionProgressBar(); // Reposition and resize progress bar after adjusting background
+    }
+
+    setTotalGoals(total) {
+        this.totalGoals = total;
+        this.updateProgressBar();
+    }
+
+    incrementCompletedGoals() {
+        this.completedGoals++;
+        this.updateProgressBar();
+    }
+
+    resetProgress() {
+        this.completedGoals = 0;
+        this.updateProgressBar();
+    }
+
+    updateProgressBar() {
+        if (this.progressBar) {
+            this.progressBar.updateProgress(this.completedGoals, this.totalGoals);
+        }
     }
 
     // update() {

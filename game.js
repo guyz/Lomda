@@ -9,6 +9,11 @@ import Goal from './components/goal.js';
 import GoalManager from './goalManager.js';
 import Item from './components/item.js';
 
+let currentSegment = 0;
+let segmentStartX = 0;
+let segmentGoalsCompleted = 0;
+let segmentBoundaries;
+
 const gameConfig = {
     type: Phaser.AUTO,
     width: screenConfig.width,
@@ -24,10 +29,10 @@ const gameConfig = {
     scene: { preload, create, update }
 };
 
-const TILE_SIZE = 32;
-const MAX_JUMP_HEIGHT = 4;
-const MIN_HORIZONTAL_GAP = 2;
-const MAX_HORIZONTAL_GAP = 5;
+const TILE_SIZE = screenConfig.tileSize;
+const MAX_JUMP_HEIGHT = 4; // TODO: move to config..
+const MIN_HORIZONTAL_GAP = 2; // TODO: move to config..
+const MAX_HORIZONTAL_GAP = 5; // TODO: move to config..
 
 let player;
 let cursors;
@@ -55,45 +60,51 @@ function preload() {
     Letter.preload(this, componentConfig[componentTypes.LETTER]);
     NumberComponent.preload(this, componentConfig[componentTypes.NUMBER]);
     Item.preload(this, componentConfig[componentTypes.ITEM]);
-    this.load.image('checkmark', 'assets/checkmark.png');
+    this.load.spritesheet(assetConfig.goodJob.key, assetConfig.goodJob.url, {
+        frameWidth: assetConfig.goodJob.frameWidth,
+        frameHeight: assetConfig.goodJob.frameHeight
+    });
+    console.log('Attempting to load goodjob spritesheet');
+    
+    this.load.on('filecomplete-spritesheet-goodjob', function() {
+        console.log('goodjob spritesheet loaded successfully');
+    });
+
+    this.load.on('loaderror', function(file) {
+        console.error('Error loading file:', file.key);
+    });
+
+    console.log('Phaser Version:', Phaser.VERSION);
+    console.log('Rendering Engine:', this.sys.game.config.renderType === Phaser.AUTO ? 'Auto' : 
+        (this.sys.game.config.renderType === Phaser.CANVAS ? 'Canvas' : 'WebGL'));
+
+    this.load.image(assetConfig.wall.key, assetConfig.wall.url);
 }
 
 function create() {
-    this.physics.world.setBounds(0, 0, levelConfig.width, levelConfig.height);
-    this.add.tileSprite(0, 0, levelConfig.width, levelConfig.height, assetConfig.sky.key).setOrigin(0, 0);
+    const totalWidth = levelConfig.segments.reduce((sum, segment) => sum + segment.width, 0);
+    this.physics.world.setBounds(0, 0, totalWidth, levelConfig.height);
+    this.add.tileSprite(0, 0, totalWidth, levelConfig.height, assetConfig.sky.key).setOrigin(0, 0);
 
     platforms = this.physics.add.staticGroup();
     letters = this.physics.add.group();
     numbers = this.physics.add.group();
     items = this.physics.add.group();
 
-    // Initialize goalManager first
     goalManager = new GoalManager(componentConfig[componentTypes.GOAL]);
 
-    levelConfig.components.forEach(component => {
-        switch (component.type) {
-            case componentTypes.CHARACTER:
-                player = new Character(this, component.x, component.y, componentConfig[componentTypes.CHARACTER]);
-                break;
-            case componentTypes.LETTER:
-                createLetters(this, component);
-                break;
-            case componentTypes.PLATFORM:
-                createPlatforms(this, component);
-                break;
-            case componentTypes.GOAL:
-                goal = new Goal(this, componentConfig[componentTypes.GOAL]);
-                this.add.existing(goal);
-                setNewGoal();
-                break;
-            case componentTypes.NUMBER:
-                createNumbers(this, component);
-                break;
-            case componentTypes.ITEM:
-                createItems(this, component);
-                break;
-        }
+    segmentBoundaries = this.physics.add.staticGroup();
+
+    levelConfig.segments.forEach((segment, index) => {
+        createSegment(this, segment, index);
     });
+
+    // Set up the initial segment
+    currentSegment = 0;
+    goal = new Goal(this, componentConfig[componentTypes.GOAL]);
+    this.add.existing(goal);
+    goal.setTotalGoals(levelConfig.segments[currentSegment].goalsToComplete);
+    setNewGoal(levelConfig.segments[currentSegment].goals, levelConfig.segments[currentSegment].difficulty);
 
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(letters, platforms);
@@ -103,14 +114,61 @@ function create() {
     this.physics.add.collider(items, platforms);
     this.physics.add.overlap(player, items, collectItem, null, this);
 
-    this.cameras.main.setBounds(0, 0, levelConfig.width, levelConfig.height);
+    this.physics.add.collider(player, segmentBoundaries);
+
+    this.cameras.main.setBounds(0, 0, totalWidth, levelConfig.height);
     this.cameras.main.startFollow(player, true, 0.05, 0.05);
 
     cursors = this.input.keyboard.createCursorKeys();
+
+    // Add this to create the goodjob animation
+    this.anims.create({
+        key: 'goodjob_anim',
+        frames: this.anims.generateFrameNumbers(assetConfig.goodJob.key, { start: 0, end: assetConfig.goodJob.frameCount - 1 }),
+        frameRate: 30,
+        repeat: 0
+    });
 }
 
-function createPlatforms(scene, config) {
-    const gridWidth = Math.ceil(levelConfig.width / TILE_SIZE);
+function createSegment(scene, segment, index) {
+    const startX = segmentStartX;
+    segmentStartX += segment.width;
+
+    segment.components.forEach(component => {
+        switch (component.type) {
+            case componentTypes.CHARACTER:
+                player = new Character(scene, startX + component.x, component.y, componentConfig[componentTypes.CHARACTER]);
+                break;
+            case componentTypes.LETTER:
+                createLetters(scene, component, startX, startX + segment.width, segment.difficulty);
+                break;
+            case componentTypes.PLATFORM:
+                createPlatforms(scene, component, startX, startX + segment.width);
+                break;
+            case componentTypes.GOAL:
+                if (index === currentSegment) {
+                    goal = new Goal(scene, componentConfig[componentTypes.GOAL]);
+                    scene.add.existing(goal);
+                    goal.setTotalGoals(segment.goalsToComplete);
+                    setNewGoal(segment.goals, segment.difficulty);
+                }
+                break;
+            case componentTypes.NUMBER:
+                createNumbers(scene, component, startX, startX + segment.width, segment.difficulty);
+                break;
+            case componentTypes.ITEM:
+                createItems(scene, component, startX, startX + segment.width);
+                break;
+        }
+    });
+
+    // Create wall at the end of every segment
+    const wallConfig = componentConfig[componentTypes.PLATFORM].types.wall;
+    createSegmentWall(scene, startX + segment.width - wallConfig.width, levelConfig.height, false, index);
+}
+
+function createPlatforms(scene, config, startX, endX) {
+    const gridWidth = Math.ceil((endX - startX) / TILE_SIZE);
     const gridHeight = Math.ceil(levelConfig.height / TILE_SIZE);
     const grid = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(0));
 
@@ -154,66 +212,68 @@ function createPlatforms(scene, config) {
 
                 let platform = new Platform(
                     scene,
-                    x * TILE_SIZE + TILE_SIZE / 2,
+                    startX + x * TILE_SIZE + TILE_SIZE / 2,
                     y * TILE_SIZE + TILE_SIZE / 2,
                     { key: platformConfigItem.key, width: TILE_SIZE, height: TILE_SIZE }
                 );
                 platforms.add(platform);
-                occupyTile(x, y);
+                occupyTile(startX + x * TILE_SIZE, y * TILE_SIZE);
             }
         }
     }
 }
 
-function createLetters(scene, config) {
+function createLetters(scene, config, startX, endX, difficulty) {
     const letterConfig = componentConfig[componentTypes.LETTER];
-    const gridWidth = Math.ceil(levelConfig.width / TILE_SIZE);
+    const gridWidth = Math.ceil((endX - startX) / TILE_SIZE);
     const gridHeight = Math.ceil(levelConfig.height / TILE_SIZE);
+    const availableLetters = abConfig.letterDifficulty[difficulty];
 
     for (let i = 0; i < config.count; i++) {
         let gridX, gridY;
         do {
             gridX = Phaser.Math.Between(0, gridWidth - 1);
             gridY = Phaser.Math.Between(0, gridHeight - 1);
-        } while (isTileOccupied(gridX, gridY));
+        } while (isTileOccupied(startX + gridX * TILE_SIZE, gridY * TILE_SIZE));
 
-        const x = gridX * TILE_SIZE + TILE_SIZE / 2;
+        const x = startX + gridX * TILE_SIZE + TILE_SIZE / 2;
         const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-        let letterChar = goalManager.getRandomLetter();
+        let letterChar = availableLetters[Math.floor(Math.random() * availableLetters.length)];
         let letter = new Letter(scene, x, y, letterChar, letterConfig);
         letters.add(letter);
 
-        occupyTile(gridX, gridY);
+        occupyTile(startX + gridX * TILE_SIZE, gridY * TILE_SIZE);
     }
 }
 
-function createNumbers(scene, config) {
+function createNumbers(scene, config, startX, endX, difficulty) {
     const numberConfig = componentConfig[componentTypes.NUMBER];
-    const gridWidth = Math.ceil(levelConfig.width / TILE_SIZE);
+    const gridWidth = Math.ceil((endX - startX) / TILE_SIZE);
     const gridHeight = Math.ceil(levelConfig.height / TILE_SIZE);
+    const { min, max } = abConfig.numberDifficulty[difficulty];
 
     for (let i = 0; i < config.count; i++) {
         let gridX, gridY;
         do {
             gridX = Phaser.Math.Between(0, gridWidth - 1);
             gridY = Phaser.Math.Between(0, gridHeight - 1);
-        } while (isTileOccupied(gridX, gridY));
+        } while (isTileOccupied(startX + gridX * TILE_SIZE, gridY * TILE_SIZE));
 
-        const x = gridX * TILE_SIZE + TILE_SIZE / 2;
+        const x = startX + gridX * TILE_SIZE + TILE_SIZE / 2;
         const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-        let numberValue = goalManager.getRandomNumber();
+        let numberValue = Phaser.Math.Between(min, max);
         let number = new NumberComponent(scene, x, y, numberValue, numberConfig);
         numbers.add(number);
 
-        occupyTile(gridX, gridY);
+        occupyTile(startX + gridX * TILE_SIZE, gridY * TILE_SIZE);
     }
 }
 
-function createItems(scene, config) {
+function createItems(scene, config, startX, endX) {
     const itemConfig = componentConfig[componentTypes.ITEM];
-    const gridWidth = Math.ceil(levelConfig.width / TILE_SIZE);
+    const gridWidth = Math.ceil((endX - startX) / TILE_SIZE);
     const gridHeight = Math.ceil(levelConfig.height / TILE_SIZE);
 
     let itemsCreated = 0;
@@ -222,8 +282,8 @@ function createItems(scene, config) {
         let gridX = Phaser.Math.Between(0, gridWidth - 1);
         let gridY = Phaser.Math.Between(0, gridHeight - 1);
 
-        if (!isTileOccupied(gridX, gridY)) {
-            const x = gridX * TILE_SIZE + TILE_SIZE / 2;
+        if (!isTileOccupied(startX + gridX * TILE_SIZE, gridY * TILE_SIZE)) {
+            const x = startX + gridX * TILE_SIZE + TILE_SIZE / 2;
             const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
             const itemTypes = Object.keys(itemConfig.types);
@@ -233,7 +293,7 @@ function createItems(scene, config) {
             let item = new Item(scene, x, y, randomItemType, itemTypeConfig);
             items.add(item);
 
-            occupyTile(gridX, gridY);
+            occupyTile(startX + gridX * TILE_SIZE, gridY * TILE_SIZE);
             itemsCreated++;
         }
     }
@@ -245,9 +305,12 @@ function collectLetter(player, letter) {
     const collectedLetter = { type: 'letter', value: letter.getData('letter') };
     console.log('Collected letter:', collectedLetter.value);
 
-    if (goalManager.checkGoalAchievement(collectedLetter)) {
+    if (segmentGoalsCompleted < levelConfig.segments[currentSegment].goalsToComplete && goalManager.checkGoalAchievement(collectedLetter)) {
         console.log('Goal achieved!');
-        setNewGoal();
+        goal.playGoodJobAnimation();
+        goal.incrementCompletedGoals();
+        segmentGoalsCompleted++;
+        setNewGoal(levelConfig.segments[currentSegment].goals, levelConfig.segments[currentSegment].difficulty);
     }
 
     letter.destroy();
@@ -257,9 +320,12 @@ function collectNumber(player, number) {
     const collectedNumber = { type: 'number', value: number.getData('number') };
     console.log('Collected number:', collectedNumber.value);
 
-    if (goalManager.checkGoalAchievement(collectedNumber)) {
+    if (segmentGoalsCompleted < levelConfig.segments[currentSegment].goalsToComplete && goalManager.checkGoalAchievement(collectedNumber)) {
         console.log('Goal achieved!');
-        setNewGoal();
+        goal.playGoodJobAnimation();
+        goal.incrementCompletedGoals();
+        segmentGoalsCompleted++;
+        setNewGoal(levelConfig.segments[currentSegment].goals, levelConfig.segments[currentSegment].difficulty);
     }
 
     number.destroy();
@@ -269,18 +335,26 @@ function collectItem(player, item) {
     const collectedItem = { type: 'item', value: item.getData('item') };
     console.log('Collected item:', collectedItem.value);
 
-    if (goalManager.checkGoalAchievement(collectedItem)) {
+    if (segmentGoalsCompleted < levelConfig.segments[currentSegment].goalsToComplete && goalManager.checkGoalAchievement(collectedItem)) {
         if (goal.updateProgress()) {
-            console.log('Goal achieved!');
-            setNewGoal();
+            console.log('Goal achieved! Triggering good job animation.');
+            goal.incrementCompletedGoals();
+            segmentGoalsCompleted++;
+            setNewGoal(levelConfig.segments[currentSegment].goals, levelConfig.segments[currentSegment].difficulty);
         }
     }
 
     item.destroy();
 }
 
-function setNewGoal() {
-    const newGoal = goalManager.setNewGoal();
+function setNewGoal(availableGoals, difficulty) {
+    if (segmentGoalsCompleted >= levelConfig.segments[currentSegment].goalsToComplete) {
+        console.log('All goals for this segment completed. Move to the next segment.');
+        goal.setGoalText('Done!', { type: 'done' });
+        return;
+    }
+
+    const newGoal = goalManager.setNewGoal(availableGoals, difficulty);
     let goalText, goalData;
 
     switch (newGoal.type) {
@@ -309,8 +383,114 @@ function setNewGoal() {
     console.log('New goal set:', newGoal.type, goalText);
 }
 
+function moveToNextSegment(player) {
+    if (segmentGoalsCompleted >= levelConfig.segments[currentSegment].goalsToComplete) {
+        currentSegment++;
+        if (currentSegment < levelConfig.segments.length) {
+            segmentGoalsCompleted = 0;
+            
+            // Calculate the new x position for the player
+            let newX = 0;
+            for (let i = 0; i < currentSegment; i++) {
+                newX += levelConfig.segments[i].width;
+            }
+            newX += 100;  // Add a small offset from the start of the new segment
+
+            // Reset and set up the goal for the new segment
+            if (goal) {
+                goal.setTotalGoals(levelConfig.segments[currentSegment].goalsToComplete);
+                goal.resetProgress();
+                setNewGoal(levelConfig.segments[currentSegment].goals, levelConfig.segments[currentSegment].difficulty);
+            }
+
+            // Recreate wall behind the player with animation
+            const prevSegmentEnd = newX - 100 - TILE_SIZE;
+            createSegmentWall(player.scene, prevSegmentEnd, levelConfig.height, true);
+
+            console.log(`Moved to segment ${currentSegment}`);
+        } else {
+            console.log('Game Completed!');
+            // Handle game completion
+        }
+    } else {
+        console.log('Cannot move to next segment. Goals not completed.');
+    }
+}
+
+function createSegmentWall(scene, x, height, animate = false, segmentIndex) {
+    const wallConfig = componentConfig[componentTypes.PLATFORM].types.wall;
+    const wallWidth = wallConfig.width;
+    const numTiles = Math.ceil(height / wallConfig.height);
+
+    const wallTiles = [];
+
+    for (let i = 0; i < numTiles; i++) {
+        const wall = new Platform(
+            scene,
+            x + wallWidth / 2,
+            height - (i * wallConfig.height + wallConfig.height / 2),
+            { key: wallConfig.key, width: wallWidth, height: wallConfig.height }
+        );
+        wall.setData('segmentIndex', segmentIndex);
+        segmentBoundaries.add(wall);
+        wallTiles.push(wall);
+
+        if (animate) {
+            wall.setAlpha(0);
+        }
+    }
+
+    if (animate) {
+        scene.tweens.timeline({
+            tweens: wallTiles.map((tile, index) => ({
+                targets: tile,
+                alpha: 1,
+                duration: 100,
+                ease: 'Linear',
+                offset: index * 50
+            }))
+        });
+    }
+}
+
+function destroySegmentWall(scene, segmentIndex) {
+    const wallsToRemove = segmentBoundaries.getChildren().filter(wall => wall.getData('segmentIndex') === segmentIndex);
+    
+    // Sort walls from top to bottom
+    wallsToRemove.sort((a, b) => b.y - a.y);
+
+    scene.tweens.timeline({
+        tweens: wallsToRemove.map((wall, index) => ({
+            targets: wall,
+            alpha: 0,
+            duration: 100,
+            ease: 'Linear',
+            offset: index * 50,
+            onComplete: () => {
+                wall.destroy();
+            }
+        }))
+    });
+}
+
 function update() {
     player.update(cursors);
+
+    // Check if all goals for the segment are completed
+    const currentSegmentConfig = levelConfig.segments[currentSegment];
+    if (segmentGoalsCompleted >= currentSegmentConfig.goalsToComplete) {
+        // Remove the wall for the current segment if it hasn't been removed yet
+        const wallsExist = segmentBoundaries.getChildren().some(wall => wall.getData('segmentIndex') === currentSegment);
+        if (wallsExist) {
+            destroySegmentWall(this, currentSegment);
+        }
+
+        // Check if player has moved to the next segment
+        const segmentEndX = levelConfig.segments.slice(0, currentSegment + 1).reduce((sum, seg) => sum + seg.width, 0);
+        if (player.x >= segmentEndX) {
+            moveToNextSegment(player);
+        }
+    }
 
     letters.getChildren().forEach(letter => {
         letter.update();
