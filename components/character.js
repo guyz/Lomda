@@ -2,7 +2,6 @@
 
 export default class Character extends Phaser.Physics.Arcade.Sprite {
     static preload(scene, config) {
-        // Load character assets
         if (config.type === 'multisprite') {
             for (let action in config.actions) {
                 scene.load.spritesheet(`character_${action}`, config.actions[action].url, {
@@ -10,68 +9,93 @@ export default class Character extends Phaser.Physics.Arcade.Sprite {
                     frameHeight: config.frameHeight
                 });
             }
+        } else if (config.type === 'sprite') {
+            for (let action in config.actions) {
+                config.actions[action].frames.forEach((frame) => {
+                    scene.load.image(frame.key, frame.key);
+                });
+            }
         }
     }
 
     constructor(scene, x, y, config) {
-        super(scene, x, y, 'character_idle');
+        super(scene, x, y, config.type === 'multisprite' ? 'character_idle' : config.actions.idle.frames[0].key);
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.setScale(0.8);
-        this.setBounce(0.2);
+        this.setScale(config.scale || 1);
+        this.setBounce(config.bounce || 0.2);
         this.setCollideWorldBounds(true);
         this.config = config;
 
+        this.isJumping = false;
         this.createAnimations(scene);
     }
 
     createAnimations(scene) {
-        const actions = this.config.actions;
+        const animationConfig = {
+            idle: this.config.actions.idle,
+            run: this.config.actions.run || this.config.actions.left,
+            jump: this.config.actions.jump
+        };
 
-        scene.anims.create({
-            key: 'left',
-            frames: scene.anims.generateFrameNumbers('character_left', { start: 0, end: actions.left.frames - 1 }),
-            frameRate: 10,
-            repeat: -1
-        });
-
-        scene.anims.create({
-            key: 'idle',
-            frames: scene.anims.generateFrameNumbers('character_idle', { start: 0, end: actions.idle.frames - 1 }),
-            frameRate: 10,
-            repeat: -1
-        });
-
-        scene.anims.create({
-            key: 'right',
-            frames: scene.anims.generateFrameNumbers('character_right', { start: 0, end: actions.right.frames - 1 }),
-            frameRate: 10,
-            repeat: -1
-        });
-
-        scene.anims.create({
-            key: 'jump',
-            frames: [{ key: 'character_jump', frame: 0 }],
-            frameRate: 20
-        });
+        for (let actionName in animationConfig) {
+            const action = animationConfig[actionName];
+            if (this.config.type === 'multisprite') {
+                scene.anims.create({
+                    key: actionName,
+                    frames: scene.anims.generateFrameNumbers(`character_${actionName}`, { start: 0, end: action.frames - 1 }),
+                    frameRate: action.frameRate || 10,
+                    repeat: actionName === 'jump' ? 0 : -1
+                });
+            } else if (this.config.type === 'sprite') {
+                const frames = action.frames.map(frame => ({ key: frame.key }));
+                scene.anims.create({
+                    key: actionName,
+                    frames: frames,
+                    frameRate: action.frameRate || 10,
+                    repeat: actionName === 'jump' ? 0 : -1
+                });
+            }
+        }
     }
 
     update(cursors) {
+        const onGround = this.body.touching.down;
+
         if (cursors.left.isDown) {
             this.setVelocityX(-160);
-            this.anims.play('left', true);
+            if (onGround) {
+                this.play('run', true);
+            }
+            this.setFlipX(true);
         } else if (cursors.right.isDown) {
             this.setVelocityX(160);
-            this.anims.play('right', true);
+            if (onGround) {
+                this.play('run', true);
+            }
+            this.setFlipX(false);
         } else {
             this.setVelocityX(0);
-            this.anims.play('idle', true);
+            if (onGround && !this.isJumping) {
+                this.play('idle', true);
+            }
         }
 
-        if (cursors.up.isDown && this.body.touching.down) {
-            this.setVelocityY(-500); // Adjusted jump velocity
-            this.anims.play('jump');
+        if (cursors.up.isDown && onGround) {
+            this.setVelocityY(-500);
+            this.play('jump');
+            this.isJumping = true;
+        }
+
+        if (this.isJumping && onGround) {
+            this.isJumping = false;
+        }
+
+        if (!onGround) {
+            if (!this.anims.currentAnim || this.anims.currentAnim.key !== 'jump') {
+                this.play('jump');
+            }
         }
     }
 }

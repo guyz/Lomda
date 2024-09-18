@@ -2,10 +2,30 @@
 
 export default class Letter extends Phaser.Physics.Arcade.Sprite {
     static preload(scene, config) {
-        // Create letter texture
         let graphics = scene.make.graphics({ x: 0, y: 0, add: false });
+        
+        // Main fill
         graphics.fillStyle(config.color, 1);
-        graphics.fillRect(0, 0, config.width, config.height);
+        graphics.fillRoundedRect(0, 0, config.width, config.height, 10);
+        
+        // Lighter top-left edge
+        let lightColor = Phaser.Display.Color.IntegerToColor(config.color).lighten(30).color;
+        graphics.lineStyle(2, lightColor, 1);
+        graphics.beginPath();
+        graphics.moveTo(1, config.height - 1);
+        graphics.lineTo(1, 1);
+        graphics.lineTo(config.width - 1, 1);
+        graphics.strokePath();
+        
+        // Darker bottom-right edge
+        let darkColor = Phaser.Display.Color.IntegerToColor(config.color).darken(30).color;
+        graphics.lineStyle(2, darkColor, 1);
+        graphics.beginPath();
+        graphics.moveTo(config.width - 1, 1);
+        graphics.lineTo(config.width - 1, config.height - 1);
+        graphics.lineTo(1, config.height - 1);
+        graphics.strokePath();
+        
         graphics.generateTexture(config.key, config.width, config.height);
     }
 
@@ -20,7 +40,9 @@ export default class Letter extends Phaser.Physics.Arcade.Sprite {
 
         this.text = scene.add.text(x, y, letterChar, {
             font: '24px Arial',
-            fill: '#000000'
+            fill: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 2
         });
         this.text.setOrigin(0.5);
     }

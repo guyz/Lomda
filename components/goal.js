@@ -8,21 +8,21 @@ class Goal extends Phaser.GameObjects.Container {
         this.scene = scene;
         this.config = config;
 
-        this.containerWidth = 300;
-        this.containerHeight = 200;
-        this.cornerRadius = 20;
-
         this.createBackground();
 
-        this.textContainer = scene.add.container(20, 40);
-        this.itemContainer = scene.add.container(20, 100);
+        // Set container size based on the background image
+        this.setSize(this.background.width, this.background.height);
+        
+        // TODO: better align text and items to the center of the container
+        this.textContainer = scene.add.container(40, 140);
+        this.itemContainer = scene.add.container(40, 200);
 
         // Create progress bar
         // Note: these values are hardcoded for now, will make dynamic later. If you try to change the size of the goal graphic, things will break. Maybe best to keep the goal component fixed in size regardless of other configs.
-        const progressBarWidth = this.containerWidth - 40; // 40 is twice the margin
-        const progressBarHeight = 20;
-        this.progressBar = new ProgressBar(scene, 130, 10, progressBarWidth, progressBarHeight);
-        this.positionProgressBar();
+        const progressBarWidth = 177;
+        const progressBarHeight = 25;
+        this.progressBar = new ProgressBar(scene, 86, 128, progressBarWidth, progressBarHeight);
+        // this.positionProgressBar();
 
         this.add([this.background, this.textContainer, this.itemContainer, this.progressBar]);
 
@@ -44,41 +44,24 @@ class Goal extends Phaser.GameObjects.Container {
     }
 
     positionProgressBar() {
-        const margin = 20;
-        this.progressBar.x = margin;
-        this.progressBar.y = this.containerHeight - this.progressBar.height - margin;
-        this.progressBar.updateSize(this.containerWidth - 2 * margin, this.progressBar.height);
+        // const margin = 20;
+        // this.progressBar.x = margin;
+        // this.progressBar.y = this.containerHeight - this.progressBar.height - margin;
+        // this.progressBar.updateSize(this.containerWidth - 2 * margin, this.progressBar.height);
     }
 
     createBackground() {
-        if (this.background) {
-            this.background.clear();
-        } else {
-            this.background = this.scene.add.graphics();
-        }
+        this.background = this.scene.add.image(0, 0, assetConfig.goalBackground.key);
+        this.background.setOrigin(0, 0);
 
-        // Solid orange background with rounded corners
-        this.background.fillStyle(0xffa500, 1);  // Orange color
-        this.background.fillRoundedRect(0, 0, this.containerWidth, this.containerHeight, this.cornerRadius);
-
-        // Stroke
-        this.background.lineStyle(3, 0xffffff, 1);
-        this.background.strokeRoundedRect(0, 0, this.containerWidth, this.containerHeight, this.cornerRadius);
-
-        // Debug text
-        const debugText = this.scene.add.text(10, 10, 'Debug: Solid Orange Background', { 
-            fontSize: '16px', 
-            fill: '#fff',
-            backgroundColor: '#000'
-        });
-        this.add(debugText);
-
-        console.log('Background created with solid orange color');
-        console.log('Container dimensions:', this.containerWidth, 'x', this.containerHeight);
-        console.log('Background object:', this.background);
-        console.log('Is background visible:', this.background.visible);
-        console.log('Background alpha:', this.background.alpha);
-        console.log('Background position:', this.background.x, this.background.y);
+        // Resize the background to 300px width, maintaining aspect ratio
+        const scaleFactor = 300 / this.background.width;
+        this.background.setScale(scaleFactor);
+        
+        // Set the container size based on the resized background image
+        this.setSize(300, this.background.height * scaleFactor);
+        
+        this.add(this.background);
     }
 
     setGoalText(text, goalData) {

@@ -55,8 +55,9 @@ function isTileOccupied(x, y) {
 
 function preload() {
     this.load.image(assetConfig.sky.key, assetConfig.sky.url);
+    console.log('Starting character preload');
     Character.preload(this, componentConfig[componentTypes.CHARACTER]);
-    Platform.preload(this, Object.values(componentConfig[componentTypes.PLATFORM].types));
+    console.log('Character preload completed');
     Letter.preload(this, componentConfig[componentTypes.LETTER]);
     NumberComponent.preload(this, componentConfig[componentTypes.NUMBER]);
     Item.preload(this, componentConfig[componentTypes.ITEM]);
@@ -78,7 +79,10 @@ function preload() {
     console.log('Rendering Engine:', this.sys.game.config.renderType === Phaser.AUTO ? 'Auto' : 
         (this.sys.game.config.renderType === Phaser.CANVAS ? 'Canvas' : 'WebGL'));
 
+    Platform.preload(this, Object.values(componentConfig[componentTypes.PLATFORM].types));
+
     this.load.image(assetConfig.wall.key, assetConfig.wall.url);
+    this.load.image(assetConfig.goalBackground.key, assetConfig.goalBackground.url);
 }
 
 function create() {
@@ -120,14 +124,6 @@ function create() {
     this.cameras.main.startFollow(player, true, 0.05, 0.05);
 
     cursors = this.input.keyboard.createCursorKeys();
-
-    // Add this to create the goodjob animation
-    this.anims.create({
-        key: 'goodjob_anim',
-        frames: this.anims.generateFrameNumbers(assetConfig.goodJob.key, { start: 0, end: assetConfig.goodJob.frameCount - 1 }),
-        frameRate: 30,
-        repeat: 0
-    });
 }
 
 function createSegment(scene, segment, index) {
@@ -172,15 +168,45 @@ function createPlatforms(scene, config, startX, endX) {
     const gridHeight = Math.ceil(levelConfig.height / TILE_SIZE);
     const grid = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(0));
 
-    const groundHeight = 2;
+    const characterConfig = componentConfig[componentTypes.CHARACTER];
+    const characterWidthInTiles = Math.ceil(characterConfig.frameWidth * characterConfig.scale / TILE_SIZE);
+    const characterHeightInTiles = Math.ceil(characterConfig.frameHeight * characterConfig.scale / TILE_SIZE);
 
+    const MIN_HORIZONTAL_GAP = characterWidthInTiles + 1;
+    const MIN_VERTICAL_GAP = characterHeightInTiles + 1;
+    const MAX_VERTICAL_GAP = MIN_VERTICAL_GAP + 2;
+
+    const groundConfig = componentConfig[componentTypes.PLATFORM].types.ground;
+    const groundHeightInTiles = Math.ceil(groundConfig.height / TILE_SIZE);
+
+    // Create ground platforms
+    const groundTextureWidth = groundConfig.width;
+    const groundTextureHeight = groundConfig.height;
+    const numberOfGroundPieces = Math.ceil((endX - startX) / groundTextureWidth);
+
+    for (let i = 0; i < numberOfGroundPieces; i++) {
+        let ground = new Platform(
+            scene,
+            startX + i * groundTextureWidth + groundTextureWidth / 2,
+            levelConfig.height - groundTextureHeight / 2,
+            { 
+                key: groundConfig.key, 
+                width: groundTextureWidth,
+                height: groundTextureHeight
+            }
+        );
+        platforms.add(ground);
+    }
+
+    // Mark ground tiles as occupied
     for (let x = 0; x < gridWidth; x++) {
-        for (let y = gridHeight - groundHeight; y < gridHeight; y++) {
+        for (let y = gridHeight - groundHeightInTiles; y < gridHeight; y++) {
             grid[y][x] = 1;
+            occupyTile(startX + x * TILE_SIZE, y * TILE_SIZE);
         }
     }
 
-    let currentY = gridHeight - groundHeight - (MAX_JUMP_HEIGHT - 1);
+    let currentY = gridHeight - groundHeightInTiles - MIN_VERTICAL_GAP;
 
     const { minLength, maxLength, density } = levelConfig.platformConfig;
 
@@ -190,31 +216,40 @@ function createPlatforms(scene, config, startX, endX) {
             if (Math.random() < density) {
                 const platformWidth = Phaser.Math.Between(minLength, maxLength);
 
-                for (let i = 0; i < platformWidth && currentX + i < gridWidth; i++) {
-                    grid[currentY][currentX + i] = 1;
-                }
+                // Check if there's enough space for the platform and the minimum gap
+                if (currentX + platformWidth + MIN_HORIZONTAL_GAP <= gridWidth) {
+                    for (let i = 0; i < platformWidth; i++) {
+                        grid[currentY][currentX + i] = 1;
+                    }
 
-                currentX += platformWidth + Phaser.Math.Between(MIN_HORIZONTAL_GAP, MAX_HORIZONTAL_GAP);
+                    currentX += platformWidth + Phaser.Math.Between(MIN_HORIZONTAL_GAP, MIN_HORIZONTAL_GAP + 2);
+                } else {
+                    // If not enough space, move to the next row
+                    break;
+                }
             } else {
-                currentX += Phaser.Math.Between(MIN_HORIZONTAL_GAP, MAX_HORIZONTAL_GAP);
+                currentX += Phaser.Math.Between(MIN_HORIZONTAL_GAP, MIN_HORIZONTAL_GAP + 2);
             }
         }
 
-        currentY -= Phaser.Math.Between(1, MAX_JUMP_HEIGHT);
+        currentY -= Phaser.Math.Between(MIN_VERTICAL_GAP, MAX_VERTICAL_GAP);
     }
 
-    for (let y = 0; y < gridHeight; y++) {
+    // Create floating platforms
+    for (let y = 0; y < gridHeight - groundHeightInTiles; y++) {
         for (let x = 0; x < gridWidth; x++) {
             if (grid[y][x] === 1) {
-                const isGround = y >= gridHeight - groundHeight;
-                const platformConfigType = isGround ? 'ground' : 'floating';
-                const platformConfigItem = componentConfig[componentTypes.PLATFORM].types[platformConfigType];
+                const platformConfigItem = componentConfig[componentTypes.PLATFORM].types.floating;
 
                 let platform = new Platform(
                     scene,
                     startX + x * TILE_SIZE + TILE_SIZE / 2,
                     y * TILE_SIZE + TILE_SIZE / 2,
-                    { key: platformConfigItem.key, width: TILE_SIZE, height: TILE_SIZE }
+                    { 
+                        key: platformConfigItem.key, 
+                        width: TILE_SIZE, 
+                        height: TILE_SIZE 
+                    }
                 );
                 platforms.add(platform);
                 occupyTile(startX + x * TILE_SIZE, y * TILE_SIZE);

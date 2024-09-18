@@ -18,21 +18,13 @@ export const componentTypes = {
 export const assetConfig = {
     sky: {
         key: 'sky',
-        url: 'assets/sky4.jpg',
-        width: 1800,
+        url: 'assets/sky.png',
+        width: 1280,
         height: 720
     },
-    // sky: {
-    //     key: 'sky',
-    //     url: 'assets/sky.png',
-    //     width: 1280,
-    //     height: 720
-    // },
     ground: {
         key: 'ground',
-        // url: 'assets/pixel_adventure/Background/Brown.png',
-        // url: 'assets/ground2.png',
-        url: 'assets/platform_earthv2.png',
+        url: 'assets/pixel_adventure/Background/Brown.png',
         width: 1280,
         height: screenConfig.tileSize
     },
@@ -48,83 +40,39 @@ export const assetConfig = {
         url: 'assets/wall_tile.png',
         width: screenConfig.tileSize,
         height: screenConfig.tileSize
-    },
-    goalBackground: {
-        key: 'goal_background',
-        url: 'assets/ui/goal_mm1.png'
     }
 };
 
 export const componentConfig = {
     [componentTypes.CHARACTER]: {
         key: 'character',
-        frameWidth: 40,
-        frameHeight: 36,
-        type: 'sprite',
-        scale: 2,
+        frameWidth: 32, // TODO: does the character need to be screenConfig.tileSize x screenConfig.tileSize?
+        frameHeight: 32,
+        type: 'multisprite',
         actions: {
-            idle: {
-                key: 'megaman_idle',
-                frames: [
-                    { key: 'assets/megaman/idle/idle1.png' },
-                    { key: 'assets/megaman/idle/idle2.png' },
-                    { key: 'assets/megaman/idle/idle3.png' }
-                ],
-                frameRate: 5,
-                repeat: -1
-            },
-            jump: {
-                key: 'megaman_jump',
-                frames: [
-                    { key: 'assets/megaman/jump/jump1.png' },
-                    { key: 'assets/megaman/jump/jump2.png' },
-                    { key: 'assets/megaman/jump/jump3.png' },
-                    { key: 'assets/megaman/jump/jump4.png' },
-                    { key: 'assets/megaman/jump/jump5.png' }
-                ],
-                frameRate: 10,
-                repeat: 0
-            },
-            run: {
-                key: 'megaman_run',
-                frames: [
-                    { key: 'assets/megaman/run/run1.png' },
-                    { key: 'assets/megaman/run/run2.png' },
-                    { key: 'assets/megaman/run/run3.png' },
-                    { key: 'assets/megaman/run/run4.png' },
-                    { key: 'assets/megaman/run/run5.png' },
-                    { key: 'assets/megaman/run/run6.png' },
-                    { key: 'assets/megaman/run/run7.png' },
-                    { key: 'assets/megaman/run/run8.png' },
-                    { key: 'assets/megaman/run/run9.png' },
-                    { key: 'assets/megaman/run/run10.png' },
-                    { key: 'assets/megaman/run/run11.png' }
-                ],
-                frameRate: 15,
-                repeat: -1
-            }
+            left: { url: 'assets/pixel_adventure/chars/ninjafrog/run.png', frames: 12 },
+            right: { url: 'assets/pixel_adventure/chars/ninjafrog/run.png', frames: 12 },
+            idle: { url: 'assets/pixel_adventure/chars/ninjafrog/idle.png', frames: 11 },
+            jump: { url: 'assets/pixel_adventure/chars/ninjafrog/jump.png', frames: 1 }
         }
     },
     [componentTypes.LETTER]: {
         key: 'letter',
         width: screenConfig.tileSize,
         height: screenConfig.tileSize,
-        color: 0xbd1c2e // red
-        // color: 0xe86e00 // orange
+        color: 0x00FFFF
     },
     [componentTypes.PLATFORM]: {
         types: {
             ground: {
                 key: 'ground',
-                url: 'assets/platform_earthv2.png',
-                width: 256, // Set this to your ground texture's width
-                height: 64, // Set this to your ground texture's height
+                url: 'assets/pixel_adventure/Background/Brown.png',
+                width: 1280,
+                height: screenConfig.tileSize
             },
             floating: {
                 key: 'floating_platform',
-                // url: 'assets/pixel_adventure/Background/Gray.png',
-                // url: 'assets/ground2.png',
-                url: 'assets/platform_earthv2.png',
+                url: 'assets/pixel_adventure/Background/Gray.png',
                 width: screenConfig.tileSize,
                 height: screenConfig.tileSize
             },
@@ -149,7 +97,7 @@ export const componentConfig = {
         key: 'number',
         width: screenConfig.tileSize,
         height: screenConfig.tileSize,
-        color: 0xe86e00 // orange
+        color: 0xFFA500
     },
     [componentTypes.ITEM]: {
         types: {
@@ -198,29 +146,29 @@ export const levelConfig = {
     height: screenConfig.height * 2,
     segments: [
         {
-            width: screenConfig.width * 2,
+            width: screenConfig.width * 1,
             components: [
                 {
                     type: componentTypes.CHARACTER,
                     x: 100,
                     y: screenConfig.height * 2 - 150
                 },
-                { type: componentTypes.LETTER, count: 20 },
+                { type: componentTypes.LETTER, count: 50 },
                 { type: componentTypes.PLATFORM, subtype: 'ground' },
                 { type: componentTypes.PLATFORM, subtype: 'floating' },
                 { type: componentTypes.GOAL },
             ],
             goals: ['letter'],
             difficulty: 1,
-            goalsToComplete: 2  // Add this line
+            goalsToComplete: 1  // Add this line
         },
         {
-            width: screenConfig.width * 2,
+            width: screenConfig.width * 1,
             components: [
                 { type: componentTypes.PLATFORM, subtype: 'ground' },
                 { type: componentTypes.PLATFORM, subtype: 'floating' },
                 { type: componentTypes.GOAL },
-                { type: componentTypes.NUMBER, count: 30 },
+                { type: componentTypes.NUMBER, count: 100 },
             ],
             goals: ['number', 'addition', 'subtraction'],
             difficulty: 3,
@@ -232,7 +180,7 @@ export const levelConfig = {
                 { type: componentTypes.PLATFORM, subtype: 'ground' },
                 { type: componentTypes.PLATFORM, subtype: 'floating' },
                 { type: componentTypes.GOAL },
-                { type: componentTypes.ITEM, count: 40 }
+                { type: componentTypes.ITEM, count: 20 }
             ],
             goals: ['numberVisual', 'additionVisual', 'subtractionVisual'],
             difficulty: 5,
@@ -242,7 +190,7 @@ export const levelConfig = {
     platformConfig: {
         minLength: 3,
         maxLength: 9,
-        density: 0.25
+        density: 0.15
     }
 };
 
