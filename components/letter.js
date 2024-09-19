@@ -45,6 +45,8 @@ export default class Letter extends Phaser.Physics.Arcade.Sprite {
             strokeThickness: 2
         });
         this.text.setOrigin(0.5);
+
+        this.scene = scene;
     }
 
     update() {
@@ -57,5 +59,15 @@ export default class Letter extends Phaser.Physics.Arcade.Sprite {
             this.text.destroy();
         }
         super.destroy();
+    }
+
+    flashRed() {
+        this.scene.tweens.add({
+            targets: this,
+            tint: 0xff0000,
+            duration: 100,
+            yoyo: true,
+            repeat: 3
+        });
     }
 }

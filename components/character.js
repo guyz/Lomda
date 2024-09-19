@@ -29,14 +29,18 @@ export default class Character extends Phaser.Physics.Arcade.Sprite {
         this.config = config;
 
         this.isJumping = false;
+        this.startAnimation = config.startAnimation;
         this.createAnimations(scene);
+        this.startSequence = true;
+        this.endSequence = false;
     }
 
     createAnimations(scene) {
         const animationConfig = {
             idle: this.config.actions.idle,
             run: this.config.actions.run || this.config.actions.left,
-            jump: this.config.actions.jump
+            jump: this.config.actions.jump,
+            start: this.config.actions.start  // Add this line
         };
 
         for (let actionName in animationConfig) {
@@ -54,14 +58,24 @@ export default class Character extends Phaser.Physics.Arcade.Sprite {
                     key: actionName,
                     frames: frames,
                     frameRate: action.frameRate || 10,
-                    repeat: actionName === 'jump' ? 0 : -1
+                    repeat: ['jump', 'start'].includes(actionName) ? 0 : -1  // Update this line
                 });
             }
         }
     }
 
     update(cursors) {
+        // console.log("update");
+        
         const onGround = this.body.touching.down;
+
+        if ( (this.startSequence && !onGround) || (this.endSequence) ) {
+            // Nothing should happen yet
+            console.log("startSequence");
+            return;
+        } else if (this.startSequence && onGround) {
+            this.startSequence = false;
+        }
 
         if (cursors.left.isDown) {
             this.setVelocityX(-160);

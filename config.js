@@ -45,13 +45,17 @@ export const assetConfig = {
     },
     wall: {
         key: 'wall',
-        url: 'assets/wall_tile.png',
+        url: 'assets/wall.png',
         width: screenConfig.tileSize,
         height: screenConfig.tileSize
     },
     goalBackground: {
         key: 'goal_background',
         url: 'assets/ui/goal_mm1.png'
+    },
+    checkmark: {
+        key: 'checkmark',
+        url: 'assets/checkmark.png'
     }
 };
 
@@ -102,8 +106,30 @@ export const componentConfig = {
                 ],
                 frameRate: 15,
                 repeat: -1
+            },
+            // Add the new 'start' animation
+            start: {
+                key: 'megaman_start',
+                frames: [
+                    { key: 'assets/megaman/start/start1.png' },
+                    { key: 'assets/megaman/start/start2.png' },
+                    { key: 'assets/megaman/start/start3.png' },
+                    { key: 'assets/megaman/start/start4.png' },
+                    { key: 'assets/megaman/start/start5.png' },
+                    { key: 'assets/megaman/start/start6.png' },
+                    { key: 'assets/megaman/start/start7.png' },
+                    { key: 'assets/megaman/start/start8.png' },
+                    { key: 'assets/megaman/start/start9.png' },
+                    { key: 'assets/megaman/start/start10.png' },
+                    { key: 'assets/megaman/start/start11.png' },
+                    { key: 'assets/megaman/start/start12.png' },
+                    { key: 'assets/megaman/start/start13.png' }
+                ],
+                frameRate: 2,
+                repeat: 0
             }
-        }
+        },
+        startAnimation: true  // Add this line to enable the start animation
     },
     [componentTypes.LETTER]: {
         key: 'letter',
@@ -130,7 +156,7 @@ export const componentConfig = {
             },
             wall: {
                 key: 'wall',
-                url: 'assets/wall_tile.png',
+                url: 'assets/wall.png',
                 width: screenConfig.tileSize,
                 height: screenConfig.tileSize
             }
@@ -153,41 +179,41 @@ export const componentConfig = {
     },
     [componentTypes.ITEM]: {
         types: {
-            apple: { 
-                key: 'apple', 
-                url: 'assets/pixel_adventure/Items/Fruits/Apple.png', 
-                scale: 1,
-                frames: 17,
-                frameWidth: screenConfig.tileSize, // TODO: does the item need to be screenConfig.tileSize x screenConfig.tileSize? Likely easiest if it is.
-                frameHeight: screenConfig.tileSize // TODO: does the item need to be screenConfig.tileSize x screenConfig.tileSize? Likely easiest if it is.
-            },
-            banana: { 
-                key: 'banana', 
-                url: 'assets/pixel_adventure/Items/Fruits/Bananas.png', 
-                scale: 1,
-                frames: 17,
-                frameWidth: screenConfig.tileSize, 
-                frameHeight: screenConfig.tileSize
-            },
-            orange: { 
-                key: 'orange', 
-                url: 'assets/pixel_adventure/Items/Fruits/Orange.png', 
-                scale: 1,
-                frames: 17,
-                frameWidth: screenConfig.tileSize,
-                frameHeight: screenConfig.tileSize
-            },
-            cherry: {
-                key: 'cherry',
-                url: 'assets/pixel_adventure/Items/Fruits/Cherries.png',
-                scale: 1,
-                frames: 17,
-                frameWidth: screenConfig.tileSize,
-                frameHeight: screenConfig.tileSize
-            },
+            // apple: { 
+            //     key: 'apple', 
+            //     url: 'assets/pixel_adventure/Items/Fruits/Apple.png', 
+            //     scale: 1,
+            //     frames: 17,
+            //     frameWidth: screenConfig.tileSize, // TODO: does the item need to be screenConfig.tileSize x screenConfig.tileSize? Likely easiest if it is.
+            //     frameHeight: screenConfig.tileSize // TODO: does the item need to be screenConfig.tileSize x screenConfig.tileSize? Likely easiest if it is.
+            // },
+            // banana: { 
+            //     key: 'banana', 
+            //     url: 'assets/pixel_adventure/Items/Fruits/Bananas.png', 
+            //     scale: 1,
+            //     frames: 17,
+            //     frameWidth: screenConfig.tileSize, 
+            //     frameHeight: screenConfig.tileSize
+            // },
+            // orange: { 
+            //     key: 'orange', 
+            //     url: 'assets/pixel_adventure/Items/Fruits/Orange.png', 
+            //     scale: 1,
+            //     frames: 17,
+            //     frameWidth: screenConfig.tileSize,
+            //     frameHeight: screenConfig.tileSize
+            // },
+            // cherry: {
+            //     key: 'cherry',
+            //     url: 'assets/pixel_adventure/Items/Fruits/Cherries.png',
+            //     scale: 1,
+            //     frames: 17,
+            //     frameWidth: screenConfig.tileSize,
+            //     frameHeight: screenConfig.tileSize
+            // },
             gem: {
                 key: 'gem',
-                url: 'assets/pixel_adventure/Items/Gems/Gem.png',
+                url: 'assets/gem4.png',
                 scale: 1
             }
         }
@@ -198,12 +224,13 @@ export const levelConfig = {
     height: screenConfig.height * 2,
     segments: [
         {
-            width: screenConfig.width * 2,
+            width: screenConfig.width * 1,
             components: [
                 {
                     type: componentTypes.CHARACTER,
                     x: 100,
-                    y: screenConfig.height * 2 - 150
+                    y: screenConfig.height * 2 - 300
+                    // y: 1000
                 },
                 { type: componentTypes.LETTER, count: 20 },
                 { type: componentTypes.PLATFORM, subtype: 'ground' },
@@ -212,10 +239,10 @@ export const levelConfig = {
             ],
             goals: ['letter'],
             difficulty: 1,
-            goalsToComplete: 2  // Add this line
+            goalsToComplete: 1  // Add this line
         },
         {
-            width: screenConfig.width * 2,
+            width: screenConfig.width * 1,
             components: [
                 { type: componentTypes.PLATFORM, subtype: 'ground' },
                 { type: componentTypes.PLATFORM, subtype: 'floating' },
@@ -224,7 +251,7 @@ export const levelConfig = {
             ],
             goals: ['number', 'addition', 'subtraction'],
             difficulty: 3,
-            goalsToComplete: 2
+            goalsToComplete: 1
         },
         {
             width: screenConfig.width,
@@ -236,7 +263,7 @@ export const levelConfig = {
             ],
             goals: ['numberVisual', 'additionVisual', 'subtractionVisual'],
             difficulty: 5,
-            goalsToComplete: 3
+            goalsToComplete: 1
         }
     ],
     platformConfig: {

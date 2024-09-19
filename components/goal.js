@@ -3,19 +3,19 @@ import { screenConfig, assetConfig } from '../config.js';
 import ProgressBar from './progressBar.js';
 
 class Goal extends Phaser.GameObjects.Container {
-    constructor(scene, config) {
+    constructor(scene, config, itemConfig) {
         super(scene, 20, 20);
         this.scene = scene;
         this.config = config;
-
+        this.itemConfig = itemConfig;
         this.createBackground();
 
         // Set container size based on the background image
         this.setSize(this.background.width, this.background.height);
         
         // TODO: better align text and items to the center of the container
-        this.textContainer = scene.add.container(40, 140);
-        this.itemContainer = scene.add.container(40, 200);
+        this.textContainer = scene.add.container(40, 130);
+        this.itemContainer = scene.add.container(40, 170);
 
         // Create progress bar
         // Note: these values are hardcoded for now, will make dynamic later. If you try to change the size of the goal graphic, things will break. Maybe best to keep the goal component fixed in size regardless of other configs.
@@ -69,61 +69,76 @@ class Goal extends Phaser.GameObjects.Container {
         this.itemContainer.removeAll(true);
         this.requiredItems = 0;
         this.collectedItems = 0;
+        let [a, b] = [0, 0];
+        const spacing = 15;
 
+        // Choose item at random from itemConfig
+        const itemKey = Object.keys(this.itemConfig.types)[Math.floor(Math.random() * Object.keys(this.itemConfig.types).length)];
+        console.log(`Item key for goal: ${itemKey}`);
         switch (goalData.type) {
             case 'letter':
             case 'number':
-                this.addText(text, 0);
+                this.addText(text, 0, null, 30);
                 break;
             case 'numberVisual':
-                this.addNumberGoal(text, parseInt(goalData.value), 'apple');
+                this.addNumberGoal(text, parseInt(goalData.value), itemKey);
                 this.requiredItems = parseInt(goalData.value);
                 break;
             case 'addition':
             case 'subtraction':
-                this.addText(text, 0);
+                // Parse the text to get the operator and operands
+                const initialOffset = -50;
+                const operatorMatch = text.match(/([+\-])/);
+                const operator = operatorMatch ? operatorMatch[0] : '';
+                const operands = text.split(operator).map(n => parseInt(n.trim()));
+                [a, b] = operands;
+                // this.addText(text, 0, null, 30);
+                this.addText(a.toString(), initialOffset, null, 30);
+                this.addText(operator, initialOffset + this.itemSize * 3 * this.itemScale + spacing, null, 30);
+                this.addText(b.toString(), initialOffset + (this.itemSize * 3 * this.itemScale + spacing) * 2, null, 30);
                 break;
             case 'additionVisual':
             case 'subtractionVisual':
-                this.addOperationGoal(goalData.value, 'apple', goalData.type === 'additionVisual' ? '+' : '-');
-                const [a, b] = goalData.value.split(goalData.type === 'additionVisual' ? '+' : '-').map(n => parseInt(n.trim()));
+                this.addOperationGoal(goalData.value, itemKey, goalData.type === 'additionVisual' ? '+' : '-');
+                [a, b] = goalData.value.split(goalData.type === 'additionVisual' ? '+' : '-').map(n => parseInt(n.trim()));
                 this.requiredItems = goalData.type === 'additionVisual' ? a + b : a - b;
                 break;
             default:
-                this.addText(text, 0);
+                this.addText(text, 0, null, 30);
         }
     }
 
     addNumberGoal(text, value, itemKey) {
-        this.addText(text, 0);
+        this.addText(text, 0, 48);
         this.addItems(value, itemKey, 0);
     }
 
     addOperationGoal(value, itemKey, operator) {
         const [a, b] = value.split(operator).map(n => parseInt(n.trim()));
+        const initialOffset = -50;
         const spacing = 15;
 
-        this.addText(a.toString(), 0);
-        this.addText(operator, this.itemSize * 3 * this.itemScale + spacing);
-        this.addText(b.toString(), (this.itemSize * 3 * this.itemScale + spacing) * 2);
+        this.addText(a.toString(), initialOffset, 48);
+        this.addText(operator, initialOffset + this.itemSize * 3 * this.itemScale + spacing, 48);
+        this.addText(b.toString(), initialOffset + (this.itemSize * 3 * this.itemScale + spacing) * 2, 48);
 
         if (operator === '+') {
             this.addItems(a, itemKey, 0);
-            this.addItems(b, itemKey, (this.itemSize * 3 * this.itemScale + spacing) * 2);
+            this.addItems(b, itemKey, (this.itemSize * 3 * this.itemScale + 2*spacing) * 2);
         } else if (operator === '-') {
             this.addItems(a, itemKey, 0);
-            this.addItems(b, itemKey, (this.itemSize * 3 * this.itemScale + spacing) * 2, true);
+            this.addItems(b, itemKey, (this.itemSize * 3 * this.itemScale + 2*spacing) * 2, true);
         }
     }
 
-    addText(text, x) {
-        const goalText = this.scene.add.text(x, 0, text, {
-            fontSize: this.config.fontSize,
+    addText(text, x, fontSize = null, y = 0) {
+        const goalText = this.scene.add.text(this.textContainer.width / 2 + x + 100, y, text, {
+            fontSize: fontSize || this.config.fontSize,
             fontFamily: this.config.fontFamily,
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 4
-        }).setOrigin(0, 0.5);
+        }).setOrigin(0.5, 0.5);
         this.textContainer.add(goalText);
     }
 

@@ -26,6 +26,7 @@ class Item extends Phaser.Physics.Arcade.Sprite {
                 });
             } else {
                 scene.load.image(item.key, item.url);
+                console.log(`Preloaded item: ${item.key}`);
             }
         });
     }
