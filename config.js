@@ -51,7 +51,12 @@ export const assetConfig = {
     },
     goalBackground: {
         key: 'goal_background',
-        url: 'assets/ui/goal_mm1.png'
+        frames: [
+            { key: 'assets/ui/goal_mm0.png' },
+            { key: 'assets/ui/goal_mm1.png' },
+            { key: 'assets/ui/goal_mm2.png' },
+            { key: 'assets/ui/goal_mm3.png' },
+        ]
     },
     checkmark: {
         key: 'checkmark',

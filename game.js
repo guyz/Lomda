@@ -83,7 +83,10 @@ function preload() {
     Platform.preload(this, Object.values(componentConfig[componentTypes.PLATFORM].types));
 
     this.load.image(assetConfig.wall.key, assetConfig.wall.url);
-    this.load.image(assetConfig.goalBackground.key, assetConfig.goalBackground.url);
+    // this.load.image(assetConfig.goalBackground.key, assetConfig.goalBackground.url);
+    assetConfig.goalBackground.frames.forEach((frame, index) => {
+        this.load.image(`${assetConfig.goalBackground.key}_${index}`, frame.key);
+    });
 }
 
 function create() {
@@ -486,6 +489,8 @@ function collectLetter(player, letter) {
             letter.scene.time.delayedCall(1000, () => {
                 letter.destroy();
             });
+            // update life state
+            updateLifeState();
             return;
         }
     }
@@ -495,6 +500,10 @@ function collectLetter(player, letter) {
     if (segmentGoalsCompleted >= levelConfig.segments[currentSegment].goalsToComplete) {
         letters[currentSegment].clear(true, true);
     }
+}
+
+function updateLifeState() {
+    goal.updateLifeState();
 }
 
 function collectNumber(player, number) {
@@ -516,6 +525,8 @@ function collectNumber(player, number) {
             number.scene.time.delayedCall(1000, () => {
                 number.destroy();
             });
+            // update life state
+            updateLifeState();
             return;
         }
     }

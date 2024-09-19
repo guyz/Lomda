@@ -9,6 +9,7 @@ class Goal extends Phaser.GameObjects.Container {
         this.config = config;
         this.itemConfig = itemConfig;
         this.createBackground();
+        this.currentLife = 3;
 
         // Set container size based on the background image
         this.setSize(this.background.width, this.background.height);
@@ -51,7 +52,8 @@ class Goal extends Phaser.GameObjects.Container {
     }
 
     createBackground() {
-        this.background = this.scene.add.image(0, 0, assetConfig.goalBackground.key);
+        // this.background = this.scene.add.image(0, 0, assetConfig.goalBackground.key);
+        this.background = this.scene.add.image(0, 0, `${assetConfig.goalBackground.key}_3`); // Start with full life
         this.background.setOrigin(0, 0);
 
         // Resize the background to 300px width, maintaining aspect ratio
@@ -62,6 +64,15 @@ class Goal extends Phaser.GameObjects.Container {
         this.setSize(300, this.background.height * scaleFactor);
         
         this.add(this.background);
+    }
+
+    updateLifeState() {
+        if (this.currentLife === 0) {
+            this.currentLife = 3;
+        } else {
+            this.currentLife--;
+        }
+        this.background.setTexture(`${assetConfig.goalBackground.key}_${this.currentLife}`);
     }
 
     setGoalText(text, goalData) {
