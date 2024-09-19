@@ -42,11 +42,14 @@ let numbers;
 let goal;
 let goalManager;
 let items;
-
+let tileMatrix;
 const occupiedTiles = new Map();
 
 function occupyTile(x, y) {
     occupiedTiles.set(`${x},${y}`, true);
+    const tileX = Math.floor(x / TILE_SIZE);
+    const tileY = Math.floor(y / TILE_SIZE);
+    tileMatrix[tileX][tileY] = 1;
 }
 
 function isTileOccupied(x, y) {
@@ -91,6 +94,14 @@ function preload() {
 
 function create() {
     const totalWidth = levelConfig.segments.reduce((sum, segment) => sum + segment.width, 0);
+    const totalHeight = levelConfig.height;
+
+    const numHorizontalTiles = Math.ceil(totalWidth / screenConfig.tileSize);
+    const numVerticalTiles = Math.ceil(totalHeight / screenConfig.tileSize);
+
+    // Initialize the tileMatrix with zeros
+    tileMatrix = Array.from({ length: numHorizontalTiles }, () => Array(numVerticalTiles).fill(0));
+
     this.physics.world.setBounds(0, 0, totalWidth, levelConfig.height);
     this.add.tileSprite(0, 0, totalWidth, levelConfig.height, assetConfig.sky.key).setOrigin(0, 0);
 
@@ -226,13 +237,10 @@ function createPlatforms(scene, config, startX, endX) {
             }
         );
         platforms.add(ground);
-    }
 
-    // Mark ground tiles as occupied
-    for (let x = 0; x < gridWidth; x++) {
-        for (let y = gridHeight - groundHeightInTiles; y < gridHeight; y++) {
-            grid[y][x] = 1;
-            occupyTile(startX + x * TILE_SIZE, y * TILE_SIZE);
+        // Mark ground tiles as occupied
+        for (let x = 0; x < groundTextureWidth / TILE_SIZE; x++) {
+            occupyTile(startX + i * groundTextureWidth + x * TILE_SIZE, levelConfig.height - groundTextureHeight);
         }
     }
 
@@ -342,6 +350,7 @@ function createPlatforms(scene, config, startX, endX) {
                     }
                 );
                 platforms.add(platform);
+                occupyTile(startX + x * TILE_SIZE, y * TILE_SIZE);
             }
         }
     }
@@ -665,6 +674,8 @@ function createSegmentWall(scene, x, height, animate = false, segmentIndex) {
         if (animate) {
             wall.setAlpha(0);
         }
+
+        occupyTile(x, height - (i * wallConfig.height));
     }
 
     if (animate) {
